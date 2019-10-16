@@ -38,12 +38,12 @@ Instruções de uso listadas abaixo.
 
 Parseando Robots.txt:
 ```sh
-$ python pfinder.py -u http://example.com --robots
+$ python pfinder.py -u exemplo.com --robots
 ```
 
 Buscando diretórios + subdomains usando uma wordlist própria:
 ```sh
-$ python pfinder.py -u example.com -l wordlist.txt --robots --sub
+$ python pfinder.py -u exemplo.com -l wordlist.txt --robots --sub
 ```
 
 Mostrar ajuda:
@@ -62,6 +62,7 @@ $ python pfinder.py -h
 
 ### Screenshots
 
+[![P|Finder](https://i.imgur.com/uSEtOus.png)](https://github.com/desecsecurity/url-path-finder/)
+
 [![P|Finder](https://i.imgur.com/LaLnOAg.png)](https://github.com/desecsecurity/url-path-finder/)
 
-[![P|Finder](https://i.imgur.com/uSEtOus.png)](https://github.com/desecsecurity/url-path-finder/)
