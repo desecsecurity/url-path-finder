@@ -36,7 +36,7 @@ print(Fore.RED + '''
 
 print(Fore.YELLOW + "        #################### - URL PATH FINDER - #####################")
 print(Fore.YELLOW + "        #                    -  Desec Academy  -                     #")
-print(Fore.YELLOW + "        #  Uso: python3 pfinder.py -u http://exemplo.com --robots    #")
+print(Fore.YELLOW + "        #      Uso: python3 pfinder.py -u exemplo.com --robots       #")
 print(Fore.YELLOW + "        ##############################################################\n\n")
 
 

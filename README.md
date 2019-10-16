@@ -43,7 +43,7 @@ $ python pfinder.py -u http://example.com --robots
 
 Buscando diretórios + subdomains usando uma wordlist própria:
 ```sh
-$ python pfinder.py -u http://example.com -l wordlist.txt --robots --sub
+$ python pfinder.py -u example.com -l wordlist.txt --robots --sub
 ```
 
 Mostrar ajuda:
