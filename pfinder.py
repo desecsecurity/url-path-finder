@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
 '''
@@ -8,16 +9,16 @@ Homepage: https://www.desecsecurity.com
 Tested on: macOS/Linux/Windows 10
 '''
 
-import urllib.request
-from urllib.error import URLError, HTTPError
-import time
-from datetime import datetime, timedelta
 from colorama import Fore
 import argparse
-import sys
-
-
-achados_global = []
+import pathlib
+import concurrent.futures
+import time
+import requests
+import re
+from urllib.parse import urlparse
+import urllib3
+urllib3.disable_warnings()
 
 # -----------------------------------------------------
 
@@ -36,245 +37,144 @@ print(Fore.RED + '''
 
 print(Fore.YELLOW + "        #################### - URL PATH FINDER - #####################")
 print(Fore.YELLOW + "        #                    -  Desec Academy  -                     #")
-print(Fore.YELLOW + "        #      Uso: python3 pfinder.py -u exemplo.com --robots       #")
+print(Fore.YELLOW + "        #    Type for help: python3 pfinder.py --help                #")
+print(Fore.YELLOW + "        #    Example: python3 pfinder.py -u example.com --robots     #")
 print(Fore.YELLOW + "        ##############################################################\n\n")
 
-
 # -----------------------------------------------------
 
-
-def formatar_url(url):
-    if not url.endswith('/'):
-        url = url + '/'
-
-    if url.startswith('www.'):
-        url = url.replace('www.', 'http://')
-
-    if not url.startswith('www') or not url.startswith('http'):
-        url = 'http://' + url
-
-    return url
-
-# -----------------------------------------------------
-
-
-def formatar_subdomain(url):
-    if url.startswith('www.'):
-        url = url.replace('www.', '')
-
-    if url.startswith('http://'):
-        url = url.replace('http://', '')
-
-    if url.startswith('https://'):
-        url = url.replace('https://', '')
-
-    return url
-
-# -----------------------------------------------------
-
-
-def read_robots():
-    robots_path = formatar_url(url) + 'robots.txt'
-
-    print(Fore.YELLOW + '[' + Fore.BLUE + '+' + Fore.YELLOW + ']' + Fore.BLUE + ' Buscando paths no robots.txt...')
-
-    try:
-        data = urllib.request.urlopen(robots_path).read().decode("utf-8")
-        for item in data.split("\n"):
-            if item.startswith("Disallow:"):
-                robots_found = item[11:]
-                found.append(robots_found + Fore.YELLOW + ' (ROBOTS.TXT)')
-                print(Fore.YELLOW + '[' + Fore.BLUE + '*' + Fore.YELLOW + ']' + Fore.BLUE + " Encontrado:" + Fore.YELLOW, robots_found)
-
-    except HTTPError:
-        print(Fore.YELLOW + '[' + Fore.RED + 'x' + Fore.YELLOW + ']' + Fore.BLUE + " Não foi possível parsear o robots.txt!")
-
-# -----------------------------------------------------
-
+def chunks(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i+n]
 
 def read_wordlist():
-    global lines
-
+    wordlist = args.f
+    if isinstance(wordlist, list):
+        wordlist = args.f[0]
     try:
-        with open(wordlist) as path:
-            lines = path.readlines()
+        with open(wordlist) as f:
+            lines = f.readlines()
+            return lines
+    except IOError:
+        print(Fore.RED + 'Error reading wordlist file!')
 
-    except:
-        print(Fore.RED + 'Error ao ler wordlist.')
+def all_wordlist():
+    wordlist = read_wordlist()
+    return list(chunks(wordlist, 10))
 
-# -----------------------------------------------------
+def unique_wordlist():
+    wordlist = read_wordlist()
+    lines = [re.sub(r'\/.{1,}|\.[a-z]*|\/$', r'', l.strip().lower()) for l in wordlist]
+    unique_lines = sorted(set(lines))
+    return list(chunks(unique_lines, 10))
 
+def scan_robots():
+    print(Fore.YELLOW + 'Scanning paths in robots.txt ...')
+    try:
+        response = requests.get(domain + 'robots.txt', timeout=3, verify=False)
+        data = response.text
+        response.close()
+        if(data):
+            for line in data.split('\n'):
+                if line.startswith("Disallow:"):
+                    path = re.search(r'\s\/.*$', line)
+                    if(path is not None):
+                        full_url = domain + path.group(0).strip().replace('/', '')
+                        try:
+                            r = requests.get(full_url, timeout=4, verify=False)
+                            if(r.status_code == 200):
+                                print(Fore.GREEN + '[Found] >>> ' + full_url)
+                            r.close()
+                        except requests.exceptions.ConnectionError:
+                            continue
+        print(Fore.YELLOW + 'Robots search completed!')
+    except requests.exceptions.ConnectionError:
+        print(Fore.RED + "Error opening robots.txt or maybe it doesn't exist in server.")
 
-def progress(index):
-    path_length = len(lines)
-    porcentagem = round((index / path_length) * 100, 1)
-    porcentagem = str(porcentagem) + '%  ' + '[' + str(index) + '/' + str(path_length) + ']'
-
-    return porcentagem
-
-# -----------------------------------------------------
-
-
-def duracao(total_time):
-    sec = timedelta(seconds=total_time)
-    d = datetime(1, 1, 1) + sec
-
-    total_time = Fore.BLUE + "\nDuracao: %dd:%dh:%dm:%ds" % (d.day-1, d.hour, d.minute, d.second)
-
-    return total_time
-
-# -----------------------------------------------------s
-
-
-# def test():
-#     a = urllib.request.urlopen('http://google.com')
-#     print(a.getcode())
-
-# -----------------------------------------------------
-
-
-def find_paths():
-    global total_time
-    global found
-    # test()
-    read_wordlist()
-    index = 0
-    found_count = 0
-    found = []
-
-    if robots:
-        read_robots()
-
-    for path in lines:
-        path = path.rstrip()
-        index += 1
-
+def request_subdomains(subdomains):
+    parse = urlparse(domain)
+    for subdomain in subdomains:
         try:
-            code = urllib.request.urlopen(formatar_url(url) + path).getcode()
-            print(Fore.YELLOW + '[' + Fore.GREEN + str(index) + Fore.YELLOW + ']', Fore.GREEN + 'Encontrado! Path:', \
-                                        Fore.YELLOW + path + ' -> ' + progress(index) + ' [CODE : ' + str(code) + ']')
-            found.append(path)
+            if parse.hostname.startswith('www.'):
+                hostname = parse.hostname.replace('www.', '')
+            else:
+                hostname = parse.hostname 
+            full_url =  parse.scheme + '://' + subdomain + '.' + hostname
+            r = requests.get(full_url, timeout=5)
+            if(r.status_code == 200):
+                print(Fore.GREEN + '[Found] >>> ' + full_url)
+            r.close()
+        except requests.exceptions.ConnectionError:
+            continue
 
-        except HTTPError:
-            print(Fore.YELLOW + '[' + Fore.BLUE + str(index) + Fore.YELLOW + ']', Fore.RED + 'Falha:', \
-                                        formatar_url(url) + Fore.BLUE + path + Fore.YELLOW + ' -> ' + progress(index))
+def scan_subdomains():
+    print(Fore.YELLOW + 'Scanning subdomains...')
+    with concurrent.futures.ProcessPoolExecutor() as exec_subdomains:
+        results_subdomain = [exec_subdomains.submit(request_subdomains, subdomains) for subdomains in unique_wordlist()]
+        for f in concurrent.futures.as_completed(results_subdomain):
+            if(f.result() != None):
+                print(f.result())
+        print(Fore.YELLOW + 'Subdomains search completed!')  
 
-        except URLError as e:
-            print('Erro ao rodar o script. Provavelmente um erro na URL.')
-            print(Fore.RED + 'ERRO:', e)
-            break
-
-    end = time.time()
-    total_time = end - start
-
-    if len(found) > 0:  
-        print('\n' + Fore.GREEN + '########## [' + Fore.BLUE + str(len(found)) + Fore.GREEN + '] PATH(s) ENCONTRADO(s) ##########\n')
-        for sub in achados_global:
-            print(sub)
-
-        for path in found:
-            found_count += 1
-            print(Fore.YELLOW + '[' + Fore.BLUE + str(found_count) + Fore.YELLOW + '] ' + Fore.BLUE + formatar_url(url) + Fore.GREEN + path)
-
-    else:
-        print(Fore.RED + '\nNada foi encontrado. Tente uma nova wordlist!')
-
-    print(duracao(total_time) + '\n')
-
-
-# -----------------------------------------------------
-
-
-def subdomain():
-    global found
-    read_wordlist()
-    index = 0
-    found_count = 0
-    found = []
-
-
-
-    ### FORMATANDO WORDLIST PARA BUSCA DE SUBDOMÍNIOS ###
-    if robots:
-        read_robots()
-
-    for sub in lines:
-        sub = sub.rstrip()
-
-        if sub.endswith('/'):
-            sub = sub.replace('/', '.')
-
-        if sub.endswith('.php') or sub.endswith('.txt')  or sub.endswith('.asp'):
-            sub = sub[:-3]
-
-        if sub.endswith('.html'):
-            sub = sub[:-4]
-
-        sub = 'http://' + sub
-
-        index += 1
-
+def request_paths(paths):
+    for path in paths:
         try:
-            code = urllib.request.urlopen(sub + formatar_subdomain(url)).getcode()
-            print(Fore.YELLOW + '[' + Fore.GREEN + str(index) + Fore.YELLOW + ']', Fore.GREEN + 'Encontrado! Subdomínio:', \
-                                                Fore.YELLOW + sub + formatar_subdomain(url) + ' -> ' + progress(index) + ' [CODE : ' + str(code) + ']')
-            found.append(sub)
-            achados_global.append(Fore.YELLOW + '[' + Fore.BLUE + 'X' + Fore.YELLOW + '] ' + sub + Fore.BLUE + formatar_subdomain(url) + Fore.YELLOW + ' (SUBDOMÍNIO)')
+            full_url = domain + path.strip()
+            r = requests.get(full_url, timeout=5)
+            if(r.status_code == 200):
+                print(Fore.GREEN + '[Found] >>> ' + full_url)
+            r.close()
+        except requests.exceptions.ConnectionError:
+            continue
 
-        except HTTPError:
-            print(Fore.YELLOW + '[' + Fore.BLUE + str(index) + Fore.YELLOW + ']', Fore.RED + 'Falha:', \
-                                                sub + formatar_subdomain(url) + Fore.YELLOW + ' -> ' + progress(index))
-
-        except ValueError:
-            print(Fore.YELLOW + '[' + Fore.BLUE + str(index) + Fore.YELLOW + ']', Fore.RED + 'Falha:', \
-                                                sub + formatar_subdomain(url) + Fore.YELLOW + ' -> ' + progress(index))
-
-        except URLError as e:
-            print(Fore.YELLOW + '[' + Fore.BLUE + str(index) + Fore.YELLOW + ']', Fore.RED + 'Falha:', \
-                                                sub + formatar_subdomain(url) + Fore.YELLOW + ' -> ' + progress(index))
-
-    if len(found) > 0:
-        print('\n' + Fore.GREEN + '########## [' + Fore.BLUE + str(len(found)) + Fore.GREEN + '] SUBDOMÍNIOS(s) ENCONTRADO(s) ##########\n')
-        for sub in found:
-            found_count += 1
-            print(Fore.YELLOW + '[' + Fore.BLUE + str(found_count) + Fore.YELLOW + '] ' + Fore.BLUE + sub + formatar_subdomain(url) + '\n')
-
-    else:
-        print(Fore.RED + '\nNada foi encontrado. Tente uma nova wordlist!')
-
-
-# -----------------------------------------------------
-
+def scan_paths():
+    print(Fore.YELLOW + 'Scanning paths...')
+    with concurrent.futures.ProcessPoolExecutor() as exec_contexts:
+        results_paths = [exec_contexts.submit(request_paths, paths) for paths in all_wordlist()]
+        for f in concurrent.futures.as_completed(results_paths):
+            if(f.result() != None):
+                print(f.result())
+        print(Fore.YELLOW + 'Paths search completed!')
 
 if __name__ == '__main__':
-    global start
-    global robots
-    robots = False
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u', '-url', nargs=1, help='URL Base <obrigatório>', default=None, type=str)
-    parser.add_argument('-l', '-list', nargs=1, help='Wordlist para busca', default="wordlist.txt", type=str)
-    parser.add_argument('--robots', action='store_true', help='Parsear arquivo robots.txt e adicionar regra à wordlist', default=False)
-    parser.add_argument('--sub', action='store_true', help='Busca de subdomínio na wordlist', default=False)
+    parser.add_argument('-u', '-url', nargs=1, help='URL Base <mandatory>', required=True, default=None, type=str)
+    parser.add_argument('-f', '-file', nargs=1, help='Scan paths in wordlist.txt file', type=str, default='wordlist.txt')
+    parser.add_argument('--robots', action='store_true', help='Scan paths in robots.txt', default=False)
+    parser.add_argument('--sub', action='store_true', help='Scan subdomains in wordlist.txt file', default=False)
     args = parser.parse_args()
 
     if not args.u:
         print(Fore.RED + '********************************************')
-        print(Fore.RED + '* A URL é necesseária para rodar o script! *')
+        print(Fore.RED + '*     URL is required to run script!       *')
         print(Fore.RED + '********************************************')
-        print(Fore.YELLOW + 'Uso: python3 pfinder.py -u <url> --robots --sub\n')
-
+        print(Fore.YELLOW + 'Usage: python3 pfinder.py -u <url> --robots --sub\n')
+    if not pathlib.Path('wordlist.txt').exists() and not pathlib.Path(args.f[0]).exists():
+        print(Fore.RED + '*************************************************************************')
+        print(Fore.RED + '*          File wordlist.txt not found in this directory.               *')
+        print(Fore.RED + '*  Use the -f argument to enter the correct path of your wordlist file. *')
+        print(Fore.RED + '*************************************************************************')
     else:
-        url = args.u[0]
-
-    if args.l:
-        wordlist = args.l
-
-    if args.sub:
-        subdomain()
-
-    if args.robots:
-        robots = True
-
-    if len(sys.argv) > 1:
-        start = time.time()
-        find_paths()
+        start = time.perf_counter()
+        domain = ''
+        schemes = ['www.', 'http://', 'https://']
+        for s in schemes:
+            try:
+                r = requests.get(s + args.u[0], timeout=8, verify=False)
+                if r.status_code == 200:
+                    domain = r.url    
+                    break
+            except:
+                continue
+        if(domain):
+            print(Fore.GREEN + '[Valid URL] >>> %s ' % domain)
+            scan_paths()
+            if(args.sub):
+                scan_subdomains()
+            if(args.robots):
+                scan_robots()
+        else:
+            print(Fore.RED + 'Unable to scan host. >>> ' + args.u[0])
+        finish = time.perf_counter()
+        print(Fore.BLUE + 'Finished in %s second(s)!' % str(round(finish-start, 2)))
