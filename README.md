@@ -19,7 +19,7 @@ Instale as dependências antes de executar o script.
 ```sh
 $ git clone https://github.com/desecsecurity/url-path-finder.git
 $ pip3 install -r requirements.txt
-$ python3 pfinder.py -u <url> -l <wordlist> --robots --sub
+$ python3 pfinder.py -u <url> -f <wordlist> --robots --sub
 ```
 
 ### Argumentos
@@ -29,7 +29,7 @@ Instruções de uso listadas abaixo.
 | Args | Default | Required |
 | ------ | ------ | ------  |
 | -u, -url | None | Yes |
-| -l, -list | wordlist.txt | No |
+| -f, -file | wordlist.txt | No |
 | --robots | False | No |
 | --sub | False | No |
 
@@ -43,7 +43,7 @@ $ python pfinder.py -u exemplo.com --robots
 
 Buscando diretórios + subdomains usando uma wordlist própria:
 ```sh
-$ python pfinder.py -u exemplo.com -l wordlist.txt --robots --sub
+$ python pfinder.py -u exemplo.com -f /home/user/wordlist.txt --robots --sub
 ```
 
 Mostrar ajuda:
@@ -55,14 +55,12 @@ $ python pfinder.py -h
 
 - [x] Robots.txt parser
 - [x] Buscar subdomain
-- [x] Progresso em porcentagem
-- [x] Mostrador de status code
 - [x] Duração
+- [ ] Mostrador de status code
+- [ ] Progresso em porcentagem
 - [ ] Graphic User Interface
 
 ### Screenshots
 
-[![P|Finder](https://i.imgur.com/uSEtOus.png)](https://github.com/desecsecurity/url-path-finder/)
-
-[![P|Finder](https://i.imgur.com/LaLnOAg.png)](https://github.com/desecsecurity/url-path-finder/)
+[![P|Finder](https://i.imgur.com/cnVylwV.png)](https://github.com/desecsecurity/url-path-finder/)
 
