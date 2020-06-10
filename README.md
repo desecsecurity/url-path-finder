@@ -18,6 +18,7 @@ Instale as dependências antes de executar o script.
 
 ```sh
 $ git clone https://github.com/desecsecurity/url-path-finder.git
+$ cd url-path-finder
 $ pip3 install -r requirements.txt
 $ python3 pfinder.py -u <url> -f <wordlist> --robots --sub
 ```
