@@ -3,13 +3,13 @@
 
 '''
 Titulo: URL Path Finder (pfinder)
-Versao: 1.0 
-Data: 16/10/2019 
+Versao: 1.1 
+Data: 09/09/2020 
 Homepage: https://www.desecsecurity.com
 Tested on: macOS/Linux/Windows 10
 '''
 
-from colorama import Fore
+from colorama import Fore, Style
 import argparse
 import pathlib
 import concurrent.futures
@@ -69,7 +69,7 @@ def unique_wordlist():
     return list(chunks(unique_lines, 10))
 
 def scan_robots():
-    print(Fore.YELLOW + 'Scanning paths in robots.txt ...')
+    print(Fore.YELLOW + '[!] ' + Style.RESET_ALL + 'Scanning paths in robots.txt ...')
     try:
         response = requests.get(domain + 'robots.txt', timeout=3, verify=False)
         data = response.text
@@ -83,13 +83,13 @@ def scan_robots():
                         try:
                             r = requests.get(full_url, timeout=4, verify=False)
                             if(r.status_code == 200):
-                                print(Fore.GREEN + '[Found] >>> ' + full_url)
+                                print(Fore.GREEN + '[+] ' + Style.RESET_ALL + full_url)
                             r.close()
                         except requests.exceptions.ConnectionError:
                             continue
-        print(Fore.YELLOW + 'Robots search completed!')
+        print(Fore.GREEN + '[!] ' + Style.RESET_ALL + 'Robots search completed!')
     except requests.exceptions.ConnectionError:
-        print(Fore.RED + "Error opening robots.txt or maybe it doesn't exist in server.")
+        print(Fore.RED + '[!] ' + Style.RESET_ALL + "Error opening robots.txt or maybe it doesn't exist in server.")
 
 def request_subdomains(subdomains):
     parse = urlparse(domain)
@@ -102,19 +102,19 @@ def request_subdomains(subdomains):
             full_url =  parse.scheme + '://' + subdomain + '.' + hostname
             r = requests.get(full_url, timeout=5)
             if(r.status_code == 200):
-                print(Fore.GREEN + '[Found] >>> ' + full_url)
+                print(Fore.GREEN + '[+] ' + Style.RESET_ALL + full_url)
             r.close()
         except requests.exceptions.ConnectionError:
             continue
 
 def scan_subdomains():
-    print(Fore.YELLOW + 'Scanning subdomains...')
+    print(Fore.YELLOW + '[!] ' + Style.RESET_ALL + 'Scanning subdomains...')
     with concurrent.futures.ProcessPoolExecutor() as exec_subdomains:
         results_subdomain = [exec_subdomains.submit(request_subdomains, subdomains) for subdomains in unique_wordlist()]
         for f in concurrent.futures.as_completed(results_subdomain):
             if(f.result() != None):
                 print(f.result())
-        print(Fore.YELLOW + 'Subdomains search completed!')  
+        print(Fore.GREEN + '[!] ' + Style.RESET_ALL + 'Subdomains search completed!')  
 
 def request_paths(paths):
     for path in paths:
@@ -122,19 +122,19 @@ def request_paths(paths):
             full_url = domain + path.strip()
             r = requests.get(full_url, timeout=5)
             if(r.status_code == 200):
-                print(Fore.GREEN + '[Found] >>> ' + full_url)
+                print(Fore.GREEN + '[+] ' + Style.RESET_ALL + full_url)
             r.close()
         except requests.exceptions.ConnectionError:
             continue
 
 def scan_paths():
-    print(Fore.YELLOW + 'Scanning paths...')
+    print(Fore.YELLOW + '[!] ' + Style.RESET_ALL + 'Scanning paths...')
     with concurrent.futures.ProcessPoolExecutor() as exec_contexts:
         results_paths = [exec_contexts.submit(request_paths, paths) for paths in all_wordlist()]
         for f in concurrent.futures.as_completed(results_paths):
             if(f.result() != None):
                 print(f.result())
-        print(Fore.YELLOW + 'Paths search completed!')
+        print(Fore.GREEN + '[!] ' + Style.RESET_ALL + 'Paths search completed!')
 
 if __name__ == '__main__':
 
@@ -168,13 +168,13 @@ if __name__ == '__main__':
             except:
                 continue
         if(domain):
-            print(Fore.GREEN + '[Valid URL] >>> %s ' % domain)
+            print(Fore.GREEN + '[!] ' + Style.RESET_ALL + 'Valid URL: %s ' % domain)
             scan_paths()
             if(args.sub):
                 scan_subdomains()
             if(args.robots):
                 scan_robots()
         else:
-            print(Fore.RED + 'Unable to scan host. >>> ' + args.u[0])
+            print(Fore.RED + '[!] ' + Style.RESET_ALL + 'Unable to scan host >>> ' + args.u[0])
         finish = time.perf_counter()
-        print(Fore.BLUE + 'Finished in %s second(s)!' % str(round(finish-start, 2)))
+        print(Fore.BLUE + '[!] ' + Style.RESET_ALL + 'Finished in %s second(s)!' % str(round(finish-start, 2)))
