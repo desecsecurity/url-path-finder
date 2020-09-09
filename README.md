@@ -2,6 +2,10 @@
 
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
+### Screenshot
+
+[![P|Finder](https://i.imgur.com/pAAEGLJ.png)](https://github.com/desecsecurity/url-path-finder/)
+
 Script alternativo para a enumeração de diretórios e arquivos.
 Sintam-se livre para contribuir tanto com o código, adicionando melhorias, quanto com a wordlist padrão, adicionando novos diretórios.
 
@@ -59,8 +63,3 @@ $ python pfinder.py -h
 - [ ] Mostrador de status code
 - [ ] Progresso em porcentagem
 - [ ] Graphic User Interface
-
-### Screenshots
-
-[![P|Finder](https://i.imgur.com/cnVylwV.png)](https://github.com/desecsecurity/url-path-finder/)
-
